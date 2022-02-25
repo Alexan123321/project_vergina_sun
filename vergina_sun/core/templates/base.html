@@ -1,0 +1,76 @@
+{# HTML5 declaration #}
+<!DOCTYPE html>
+<html>
+    {# Make modifiable head elements #}
+    <head>
+        <title>{% block title %} Home {% endblock title %} | Project Vergina Sun</title>
+        {% block head_meta %}
+            {% block head_meta_charset %}
+                <meta http-equiv="Content-Type"
+                      content="text/html; charset=utf-8" />
+            {% endblock head_meta_charset %}
+            {% block head_meta_contentlanguage %}
+                <meta http-equiv="Content-Language" value="en-US" />
+            {% endblock head_meta_contentlanguage %}
+            {% block head_meta_viewport %}
+                <meta name="viewport"
+                      content="width=device-width, initial-scale=1.0">
+            {% endblock head_meta_viewport %}
+        {% endblock head_meta %}
+        {% block head_css %}
+            {% block head_css_site %}
+            {% endblock head_css_site %}
+            {% block head_css_section %}{% endblock head_css_section %}
+            {% block head_css_page %}{% endblock head_css_page %}
+        {% endblock head_css %}
+    </head>
+    
+    <body>
+        {# Navigation Menu #}
+        <header>
+            <div class="navbar navbar-default navbar-static-top 
+            {% block nav-style %}{% endblock %}">
+                <div class="container p-none">
+                    <div class="navbar-header">
+                        <button type="button" class="navbar-toggle"
+                                data-toggle="collapse"
+                                data-target=".navbar-collapse">
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                        </button>
+                        <a class="navbar-brand" href="/">Project Vergina Sun</a>
+                    </div>
+                    <div class="collapse navbar-collapse">
+                        <ul class="nav navbar-nav navbar-right">
+                            {% if user.is_authenticated %}
+                                <li><a href="/account/logout">Logout</a></li>
+                                <li><a href="/account/security">Account security</a></li>
+                                <li><a href="/chat">Chat</a></li>
+
+                            {% else %}
+                                <li><a href="/account/login">Login</a></li>
+                                <li><a href="/account/register" class="p-r-none">Register</a></li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </header>
+        {# The Document Body #}
+        <div id="site-wrapper">
+            {% block content %}
+            {% endblock content %}
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+    </body>
+    
+    <footer>
+        {# The Footer #}
+        <div class="footer">
+            <div class="container">
+                <p>Project Vergina Sun</p>
+            </div>
+        </div>
+    </footer>
+</html>
