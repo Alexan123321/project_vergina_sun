@@ -1,3 +1,4 @@
+from multiprocessing.spawn import import_main_path
 from PIL import Image #Used in preprocesser
 from concurrent.futures import process
 from eigenfaces_module import EigenfacesClient, EigenfacesServer
@@ -12,13 +13,14 @@ def load_images(image_root: str) -> np.array([]):
     images = [] #List for images
     image_directories = [] #List for image directories
     image_names = [] #List for image names
+    image_labels = [] #List for image labels
     image_name_suffix = '.'
 
     #Store all image directories, if it does not start with a '.': 
     image_directories = [image for image in os.listdir(image_root) if not image.startswith(image_name_suffix)]
             
     #Within each directory, store all image names, if it does not start with a '.':
-    for image_directory in image_directories:
+    for index, image_directory in enumerate(image_directories):
         in_directory_image_names = ([image_name for image_name in os.listdir(os.path.join(image_root, image_directory)) if not image_name.startswith(image_name_suffix)])
         image_names.append(in_directory_image_names)
 
@@ -27,9 +29,10 @@ def load_images(image_root: str) -> np.array([]):
         for image_name in image_names[index]:
             image = Image.open(os.path.join(image_root, image_directory, image_name)) #Open image
             images.append(image) #Append image to list of images
+            image_labels.append(image_directory)
 
-    #Return images and image names:
-    return images, image_names[0]
+    #Return images and image names: 
+    return images, image_labels
 
 if __name__ == '__main__':
     # Create a homomorphic Eigenfaces client:
@@ -57,4 +60,4 @@ if __name__ == '__main__':
     classification_label = Server.Classify(vectorized_test_image, training_image_labels)
 
     # Print result:
-    print(f"User is: {test_image_label} and was identified as: {classification_label}.")
+    print(f"It's: {test_image_label} bitch was identified as: {classification_label}.")
