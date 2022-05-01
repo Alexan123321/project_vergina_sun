@@ -60,4 +60,4 @@ if __name__ == '__main__':
     classification_label = Server.Classify(vectorized_test_image, training_image_labels)
 
     # Print result:
-    print(f"It's: {test_image_label} bitch was identified as: {classification_label}.")
+    print(f"{test_image_label} bitch was identified as: {classification_label}.")
