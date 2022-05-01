@@ -6,7 +6,7 @@ import numpy as np
 import os
 from tests import TestSuite
 
-TRAINING_IMAGES_PATH = "training_images"
+TRAINING_IMAGES_PATH = "yalefaces_training_images"
 TEST_IMAGE_PATH = "test_images"
 
 def load_images(image_root: str) -> np.array([]):
@@ -30,7 +30,6 @@ def load_images(image_root: str) -> np.array([]):
             image = Image.open(os.path.join(image_root, image_directory, image_name)) #Open image
             images.append(image) #Append image to list of images
             image_labels.append(image_directory)
-
     #Return images and image names: 
     return images, image_labels
 
@@ -59,11 +58,11 @@ if __name__ == '__main__':
     # Classify the test image:
     #classification_label = Server.Classify(vectorized_test_image, training_image_labels)
 
-    # Print result:
+    #Print result:
     #print(f"{test_image_label} bitch was identified as: {classification_label}.")
 
     #Testing the module: 
     tests = TestSuite(Server)
     tests.computation_time_training(vectorized_training_images)
-    tests.computation_time_classification(vectorized_test_images, training_image_labels)
-    tests.prediction_accuracy(test_image_labels)
+    #tests.computation_time_classification(vectorized_test_images, training_image_labels)
+    #tests.prediction_accuracy(test_image_labels)

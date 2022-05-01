@@ -33,36 +33,41 @@ class EigenfacesServer:
         self.mean_face = self._vector_mean(vectorized_training_images)
 
         # Step 3: Calculate the Eigenfaces using PCA, and store it in the model:
-        self.eigenfaces = self._pca(vectorized_training_images)
+        self.eigenfaces = self._pca(vectorized_training_images)        
 
         # Step 4: Calculate the projections of the training images:
         self.projected_training_images = self._project(vectorized_training_images, self.eigenfaces, self.mean_face)
-
         # Update the training attribute:
         self.is_trained = TRUE
 
-    def Classify(self, vectorized_test_image: np.array([]), labels: np.array([])) -> np.array([]):
+    def Classify(self, vectorized_test_images: np.array([]), training_labels: np.array([])) -> np.array([]):
         '''
         SUMMARY: This method classifies an image by minimizing Euclidean distance.
         PARAMETERS: Two numpy lists, one including the image to be classified and one
         with labels of all training data.
         RETURNS: A numpy list including the classification label.
         '''
+        # Make a list to store all classified labels: 
+        test_labels = []
         # Project the image to be classified into the PCA-space:
-        q = self._project(vectorized_test_image, self.eigenfaces, self.mean_face)
+        q = self._project(vectorized_test_images, self.eigenfaces, self.mean_face)
+        # Determine the number of test image projections: 
+        n = len(q)
         # Determine the number of training image projections:
-        n = len(self.projected_training_images)
-        # And, instantiate a list of zeros, where each entry represents the Euclidean distance
-        # from the image to be classified to the nth projection:
-        distances = np.zeros(n)
+        m = len(self.projected_training_images)
         # We then calculate the distances between the input image, q, and the projections:
-        for i in range (n):
-            distances[i] = self._euclidean_distance(self.projected_training_images[i], q[0])
-        # We then use the client-based function that determines the index of the minimum distance:
-        classification_index = self.distance_comparison(distances)
-        # And, return the label that corresponds to this minimum distance:
-        label = labels[classification_index]
-        return label
+        for i in range(n):
+            # Instantiate a list of zeros, where each entry represents the Euclidean distance
+            # from the image to be classified to the nth projection:
+            distances = []
+            for j in range(m):
+                distances.append(self._euclidean_distance(self.projected_training_images[j], q[i]))
+            # We then use the client-based function that determines the index of the minimum distance:
+            classification_index = self.distance_comparison(distances)
+            # And, return the label that corresponds to this minimum distance:
+            test_labels.append(training_labels[classification_index])
+        print(test_labels)
+        return test_labels
 
     def _vector_mean(self, X: np.array([])) -> np.array([]):
         '''
@@ -184,7 +189,7 @@ class EigenfacesServer:
         # Calculate the eigenvectors:
         for i in range (n):
             # Number of iterations for approximating the eigenvectors and eigenvalues:
-            no_iterations = 100
+            no_iterations = 20
             # Initialize the "old" eigenvector:
             w_old = 1
             # Initialize an initial vector:
@@ -279,7 +284,8 @@ class EigenfacesServer:
         # Calculate and the return the projection:
         p = []
         for xi in X:
-            p.append(np.dot(xi - mu, W))
+            temp = np.dot(xi - mu, W)
+            p.append(temp)
         return p
 
 @dataclass
@@ -304,7 +310,7 @@ class EigenfacesClient:
         #Temporary container to store processed images:
         normalized_images = []
         # Default image size declaration:
-        image_default_size = [256, 256] 
+        image_default_size = [128, 128] 
         # Processing loop:
         for image in images: 
             #Convert current image to greyscale:
