@@ -304,7 +304,7 @@ class EigenfacesClient:
         #Temporary container to store processed images:
         normalized_images = []
         # Default image size declaration:
-        image_default_size = [20, 20] 
+        image_default_size = [256, 256] 
         # Processing loop:
         for image in images: 
             #Convert current image to greyscale:

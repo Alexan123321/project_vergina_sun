@@ -4,10 +4,10 @@ from concurrent.futures import process
 from eigenfaces_module import EigenfacesClient, EigenfacesServer
 import numpy as np
 import os
-import time
+from tests import TestSuite
 
 TRAINING_IMAGES_PATH = "training_images"
-TEST_IMAGE_PATH = "test_image"
+TEST_IMAGE_PATH = "test_images"
 
 def load_images(image_root: str) -> np.array([]):
     images = [] #List for images
@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     # Load training images and test image from paths: 
     training_images, training_image_labels = load_images(TRAINING_IMAGES_PATH)
-    test_image, test_image_label = load_images(TEST_IMAGE_PATH)
+    test_images, test_image_labels = load_images(TEST_IMAGE_PATH)
 
     # Preprocess the images, using the client:
     normalized_training_images = Client.Image_preprocesser(training_images)
@@ -49,15 +49,21 @@ if __name__ == '__main__':
     vectorized_training_images = Client.Image_vector_representation(normalized_training_images)
     
     # Preprocess the images, using the client:
-    normalized_test_image = Client.Image_preprocesser(test_image)
+    normalized_test_images = Client.Image_preprocesser(test_images)
     # Represent the training images as vectors, using the client:
-    vectorized_test_image = Client.Image_vector_representation(normalized_test_image)
+    vectorized_test_images = Client.Image_vector_representation(normalized_test_images)
 
-    # Train the server using the training images provided by the user:
-    Server.Train(vectorized_training_images)
+    #Train the model: 
+    #Server.Train(vectorized_training_images)
 
     # Classify the test image:
-    classification_label = Server.Classify(vectorized_test_image, training_image_labels)
+    #classification_label = Server.Classify(vectorized_test_image, training_image_labels)
 
     # Print result:
-    print(f"{test_image_label} bitch was identified as: {classification_label}.")
+    #print(f"{test_image_label} bitch was identified as: {classification_label}.")
+
+    #Testing the module: 
+    tests = TestSuite(Server)
+    tests.computation_time_training(vectorized_training_images)
+    tests.computation_time_classification(vectorized_test_images, training_image_labels)
+    tests.prediction_accuracy(test_image_labels)
