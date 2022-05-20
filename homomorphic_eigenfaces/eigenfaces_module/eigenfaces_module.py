@@ -1,7 +1,5 @@
-from dataclasses import dataclass
-from pickle import TRUE
-from re import I
 import numpy as np
+from dataclasses import dataclass
 from PIL import Image
 
 #TODO: DOCSTRING OF THE EIGENFACESSERVER:
@@ -10,12 +8,12 @@ class EigenfacesServer:
     '''
     This class represents the Eigenfaces server module.
     '''
-    is_trained: bool
+    Is_trained: bool
     eigenfaces: np.array([])
     mean_face: np.array([])
     projected_training_images: np.array([])
 
-    def __init__(self, no_components_function, minimum_distance_function, goldschmidt_initializer_function):
+    def __init__(self, no_components_function, minimum_distance_function, goldschmidt_initializer_function) -> None:
         self.is_trained = False
         self.determine_components = no_components_function
         self.distance_comparison = minimum_distance_function
@@ -38,7 +36,7 @@ class EigenfacesServer:
         # Step 4: Calculate the projections of the training images:
         self.projected_training_images = self._project(vectorized_training_images, self.eigenfaces, self.mean_face)
         # Update the training attribute:
-        self.is_trained = TRUE
+        self.is_trained = True
 
     def Classify(self, vectorized_test_images: np.array([]), training_labels: np.array([])) -> np.array([]):
         '''
@@ -63,10 +61,11 @@ class EigenfacesServer:
             for j in range(m):
                 distances.append(self._euclidean_distance(self.projected_training_images[j], q[i]))
             # We then use the client-based function that determines the index of the minimum distance:
-            classification_index = self.distance_comparison(distances)
+            #classification_index = self.distance_comparison(distances)
+            classification_indexes = self.distance_comparison(distances)
+            counts = np.bincount(classification_indexes)
             # And, return the label that corresponds to this minimum distance:
-            test_labels.append(training_labels[classification_index])
-        print(test_labels)
+            test_labels.append(training_labels[np.argmax(counts)])
         return test_labels
 
     def _vector_mean(self, X: np.array([])) -> np.array([]):
@@ -78,7 +77,7 @@ class EigenfacesServer:
         # Initialize an empty mean variable: 
         mean = []
         # Calculate the sum of x:
-        __sum = self._vector_sum(X)
+        __sum = np.sum(X, axis = 0)
         # Determine the number of elements in x:
         n = len(X)
         # Calculate the dividend using Goldschmidt's method: 
@@ -91,37 +90,6 @@ class EigenfacesServer:
         # Return the mean:
         return np.array(mean)
 
-    def _vector_sum(self, X: np.array([])) -> np.array([]):
-        '''
-        SUMMARY: This method calculates the vector sum of a matrix. 
-        PARAMETERS: A numpy list.
-        RETURNS: A numpy list.
-        '''
-        # We determine the number of images: 
-        m = len(X)
-        # We determine the number of entries in each image:
-        n = len(X[0])
-        # And make a temporary sum with equal length:
-        __sum = np.zeros(n)
-        # Finally, we iterate through the input list and add all entries together.
-        for i in range(m):
-            __sum += X[i]
-        return __sum
-
-    def _sum(self, X: np.array([])) -> np.array([]):
-        '''
-        SUMMARY: This method calculates the sum of a list. 
-        PARAMETERS: A numpy list.
-        RETURNS: A numpy list.
-        '''
-        # Initialize a temporary sum and set it equal to 0:
-        __sum = 0
-        # Iterate over all elements in the parameter list:
-        for xi in X:
-            __sum = __sum + xi
-        # Return temporary sum:
-        return __sum
-
     def _goldschmidt_division(self, a, b) -> float:
         '''
         SUMMARY: This method calculates the fraction of a divided by b. 
@@ -129,7 +97,7 @@ class EigenfacesServer:
         RETURNS: A float, a.
         '''
         # We set the number of iterations for convergence:
-        no_iterations = 20
+        no_iterations = 1
         # Calculate the initial value using the client-side function that does so: 
         r = self.goldschmidt_initializer(b)
         # And, use Goldschmidt's algorithm for approximating the fraction:
@@ -148,23 +116,29 @@ class EigenfacesServer:
         determines the number of components.
         RETURNS: A numpy list.
         '''
-        # Determine the number of entries in each image:
-        k = len(X)
+        # Determine the shape of the input:
+        [n, d] = np.shape(X)
         # Subtract the mean face from all the training images:
         X -= self.mean_face
-        # Calculate the covariance matrix of X:
-        C = np.dot(X, X.T)
-        # Calculate the eigenvalues (Lambda) and eigenvectors (W) from the covariance matrix (C):
-        Lambdas, W = self.pow_eig_comb(C)
-        # And, take the dot product between the covariance matrix and the eigenvectors:
-        W = np.dot(X.T, W)
-        # Normalize the eigenvectors by dividing them with their norm:
-        for i in range(k):
-            W[:,i] = self._goldschmidt_division(W[:,i], self._norm(W[:,i]))
+        if(n > d):
+            # Calculate the covariance matrix of X:
+            C = np.dot(X.T, X)
+            # Calculate the eigenvalues (Lambda) and eigenvectors (W) from the covariance matrix (C):
+            Lambdas, W = self.pow_eig_comb(C)
+        else:
+            # Calculate the covariance matrix of X:
+            C = np.dot(X, X.T)
+            # Calculate the eigenvalues (Lambda) and eigenvectors (W) from the covariance matrix (C):
+            Lambdas, W = self.pow_eig_comb(C)
+            # And, take the dot product between the covariance matrix and the eigenvectors:
+            W = np.dot(X.T, W)
+            # Normalize the eigenvectors by dividing them with their norm:
+            for i in range(n):
+                W[:,i] = self._goldschmidt_division(W[:, i], self._norm(W[:, i]))
         # Determine the number of components using the client-side function given as input: 
         k = self.determine_components(Lambdas)
         # Select the k greatest eigenvalues: 
-        Lambdas = Lambdas[0:k].copy()
+        Lambdas = Lambdas[0: k].copy()
         # And, the associated eigenvectors:
         W = W[:, 0: k].copy()
         # Return these:
@@ -189,7 +163,7 @@ class EigenfacesServer:
         # Calculate the eigenvectors:
         for i in range (n):
             # Number of iterations for approximating the eigenvectors and eigenvalues:
-            no_iterations = 20
+            no_iterations = 50
             # Initialize the "old" eigenvector:
             w_old = 1
             # Initialize an initial vector:
@@ -210,7 +184,7 @@ class EigenfacesServer:
                     # And, set the "old" eigenvector equal to the first in the current list:
                     w_old = w[0]
             # We then handle the case in which any given eigenvalue is negative:
-            dividend = w[0] * self._goldschmidt_division(w[0], w_old)
+            dividend = self._goldschmidt_division(w[0], w_old)
             # We then multiply the dividend with the eigenvalue:
             __lambda = dividend * __lambda
             # And, multiply the dividend with the eigenvector:
@@ -248,7 +222,7 @@ class EigenfacesServer:
         RETURNS: It returns a float as output, xn, which is the approximated square root of x0.
         '''
         # Declare the number of iterations to run the algorithm:
-        no_iterations = 20
+        no_iterations = 30
         # Instantiate a temporary container for the original number:
         a = x0 
         # Approximate the square root:
@@ -258,7 +232,7 @@ class EigenfacesServer:
         xn = x0
         return xn
 
-    def _euclidean_distance(self, p, q: np.array([])) -> np.array([]):
+    def _euclidean_distance(self, p: np.array([]), q: np.array([])) -> np.array([]):
         '''
         SUMMARY: This method calculates the distance between two points. 
         PARAMETERS: Takes two points, encoded as numpy arrays, p and q, as input.
@@ -269,9 +243,9 @@ class EigenfacesServer:
         # Find the product:
         prod = sub * sub
         # And, calculates the vector sum of this product:
-        _sum = self._sum(prod)
+        __sum = np.sum(prod)
         # Finally, we calculate the square root of this: 
-        distance = self._newton_sqrt(_sum)
+        distance = self._newton_sqrt(__sum)
         # Which is the distance to be returned:
         return distance 
 
@@ -294,9 +268,8 @@ class EigenfacesClient:
     This class represents the Eigenfaces module.
     '''
 
-    #TODO: IMPLEMENT
-    def __init__(self):
-        pass
+    def __init__(self) -> None:
+        return None
 
     def Image_preprocesser(self, images: np.array([])) -> np.array([]):
         '''
@@ -310,7 +283,7 @@ class EigenfacesClient:
         #Temporary container to store processed images:
         normalized_images = []
         # Default image size declaration:
-        image_default_size = [128, 128] 
+        image_default_size = [256, 256] 
         # Processing loop:
         for image in images: 
             #Convert current image to greyscale:
@@ -367,7 +340,9 @@ class EigenfacesClient:
         PARAMETERS: Takes a numpy list of distances as input.
         RETURNS: The minimum index in the list.
         '''
-        return np.argmin(D)
+        D = np.array(D)
+        return D.argsort()[:5]
+        #return np.argmin(D)
 
     def _goldschmidt_initializer(self, x: np.array([])) -> np.array([]):
         '''

@@ -30,8 +30,8 @@ class TestSuite():
         for i in range (0, len(expected_labels)): 
             if self.labels[i] == expected_labels[i]:
                 correct += 1
-        #print("Expected labels: ", expected_labels)
-        #print("Predicted labels: ", self.labels)
+        print("Expected labels: ", expected_labels)
+        print("Predicted labels: ", self.labels)
         print(f"Correctly classified: {correct / len(expected_labels) * 100}%")
 
     def print_test_report():

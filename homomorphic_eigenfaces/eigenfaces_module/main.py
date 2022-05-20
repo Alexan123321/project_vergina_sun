@@ -1,12 +1,11 @@
 from multiprocessing.spawn import import_main_path
 from PIL import Image #Used in preprocesser
-from concurrent.futures import process
 from eigenfaces_module import EigenfacesClient, EigenfacesServer
 import numpy as np
 import os
 from tests import TestSuite
 
-TRAINING_IMAGES_PATH = "yalefaces_training_images"
+TRAINING_IMAGES_PATH = "yale_faces_cropped"
 TEST_IMAGE_PATH = "test_images"
 
 def load_images(image_root: str) -> np.array([]):
@@ -64,5 +63,5 @@ if __name__ == '__main__':
     #Testing the module: 
     tests = TestSuite(Server)
     tests.computation_time_training(vectorized_training_images)
-    #tests.computation_time_classification(vectorized_test_images, training_image_labels)
-    #tests.prediction_accuracy(test_image_labels)
+    tests.computation_time_classification(vectorized_test_images, training_image_labels)
+    tests.prediction_accuracy(test_image_labels)
