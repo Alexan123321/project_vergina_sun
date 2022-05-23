@@ -1,12 +1,15 @@
 import numpy as np
+import tenseal as ts
 from dataclasses import dataclass
 from PIL import Image
 
-#TODO: DOCSTRING OF THE EIGENFACESSERVER:
+#TODO: DOCSTRING:
 @dataclass
 class EigenfacesServer:
     '''
-    This class represents the Eigenfaces server module.
+    SUMMARY: 
+    ATTRIBUTES: 
+    METHODS:
     '''
     Is_trained: bool
     eigenfaces: np.array([])
@@ -38,6 +41,7 @@ class EigenfacesServer:
         # Update the training attribute:
         self.is_trained = True
 
+    #TODO: REMOVE KNN BY REMOVING COMMENTS
     def Classify(self, vectorized_test_images: np.array([]), training_labels: np.array([])) -> np.array([]):
         '''
         SUMMARY: This method classifies an image by minimizing Euclidean distance.
@@ -61,11 +65,12 @@ class EigenfacesServer:
             for j in range(m):
                 distances.append(self._euclidean_distance(self.projected_training_images[j], q[i]))
             # We then use the client-based function that determines the index of the minimum distance:
-            #classification_index = self.distance_comparison(distances)
-            classification_indexes = self.distance_comparison(distances)
-            counts = np.bincount(classification_indexes)
+            #classification_index = self.distance_comparison(distances) #NN
+            classification_indexes = self.distance_comparison(distances) #KNN
+            counts = np.bincount(classification_indexes) #KNN
             # And, return the label that corresponds to this minimum distance:
-            test_labels.append(training_labels[np.argmax(counts)])
+            #test_labels.append(training_albels[classification_index]) #NN
+            test_labels.append(training_labels[np.argmax(counts)]) #KNN
         return test_labels
 
     def _vector_mean(self, X: np.array([])) -> np.array([]):
@@ -76,9 +81,9 @@ class EigenfacesServer:
         '''
         # Initialize an empty mean variable: 
         mean = []
-        # Calculate the sum of x:
+        # Calculate the sum of x along the vertical axis:
         __sum = np.sum(X, axis = 0)
-        # Determine the number of elements in x:
+        # Determine the number of elements in x, horizontally:
         n = len(X)
         # Calculate the dividend using Goldschmidt's method: 
         dividend = self._goldschmidt_division(1, n)
@@ -118,8 +123,9 @@ class EigenfacesServer:
         '''
         # Determine the shape of the input:
         [n, d] = np.shape(X)
-        # Subtract the mean face from all the training images:
+        # Step 1: Subtract the mean face from all the training images:
         X -= self.mean_face
+        # Step 2: Calculate the set of principal components:
         if(n > d):
             # Calculate the covariance matrix of X:
             C = np.dot(X.T, X)
@@ -135,6 +141,7 @@ class EigenfacesServer:
             # Normalize the eigenvectors by dividing them with their norm:
             for i in range(n):
                 W[:,i] = self._goldschmidt_division(W[:, i], self._norm(W[:, i]))
+        # Step 3: Determine the number of k components that satisfy the threshold criteria and return these:
         # Determine the number of components using the client-side function given as input: 
         k = self.determine_components(Lambdas)
         # Select the k greatest eigenvalues: 
@@ -262,14 +269,24 @@ class EigenfacesServer:
             p.append(temp)
         return p
 
+#TODO: DOCSTRING:
 @dataclass
 class EigenfacesClient:
     '''
-    This class represents the Eigenfaces module.
+    SUMMARY: 
+    ATTRIBUTES: 
+    METHODS:
     '''
+    context = ts.context()
 
     def __init__(self) -> None:
-        return None
+        self.context = ts.context(
+            ts.SCHEME_TYPE.CKKS,
+            poly_modulus_degree= 16384,
+            coeff_mod_bit_sizes=[60, 40, 40, 60]
+          )
+        self.context.generate_galois_keys()
+        self.context.global_scale = 2**40
 
     def Image_preprocesser(self, images: np.array([])) -> np.array([]):
         '''
@@ -296,7 +313,13 @@ class EigenfacesClient:
             normalized_images.append(image)
         return normalized_images
 
+    #TODO: DOCSTRING:
     def Image_vector_representation(self, normalized_images: np.array([])) -> np.array([]):
+        '''
+        SUMMARY:
+        PARAMETERS:
+        RETURNS: 
+        '''
         #Then find the number of entries in each image:
         n_image_entries = normalized_images[0].size
         #Find the data type of each entry in the image:
@@ -310,14 +333,86 @@ class EigenfacesClient:
             processed_images = np.vstack((processed_images, np.asarray(row).reshape(1 , -1)))# 1 x r*c 
         #Return processed images:
         return processed_images
-    
-    #TODO: IMPLEMENT:
-    def Encrypt(self, images: np.array([])) -> np.array([]):
-        pass
 
     #TODO: IMPLEMENT:
     def Decrypt(self, images: np.array([])) -> np.array([]):
         pass
+
+    #TODO: DOCSTRING:
+    def _encrypt_vec(self, vec: np.array([])) -> np.array([]):
+        '''
+        SUMMARY:
+        PARAMETERS: 
+        RETURNS:
+        '''
+        #Instantiate temporary lists:
+        enc_vec = []
+        vec_temp = []
+        #Determine the length of the input vector:
+        n = len(vec)
+        #Then encrypt every entry in the original vector:
+        for i in range(0, n):
+            vec_temp = [vec[i]]
+            enc_vec.append(ts.ckks_vector(self.context, vec_temp))
+        #Convert the list to a numpy array:
+        enc_vec = np.array(enc_vec)
+        #And, return it:
+        return(enc_vec)
+
+    #TODO: DOCSTRING:
+    def Encrypt(self, mat: np.array([])) -> np.array([]):
+        '''
+        SUMMARY:
+        PARAMETERS: 
+        RETURNS:
+        '''
+        #Instantiate a temporary list:
+        enc_mat = []
+        #Determine the number of entries in the input matrix:
+        n = len(mat)
+        #Encrypt each vector in the matrix:
+        for i in range(0, n):
+            enc_pic = self.enc_vec(mat[i])           
+            enc_mat.append(enc_pic)    
+        #Lastly, return the encrypted matrix:
+        return enc_mat
+
+    #TODO: DOCSTRING:
+    def _decrypt_vec(self, vec: np.array([])) -> np.array([]):
+        '''
+        SUMMARY:
+        PARAMETERS: 
+        RETURNS:
+        '''
+        #Instantiate temporary lists:
+        dec_vec = []
+        vec_temp = []
+        #Determine the length of the input vector:
+        n = len(dec_vec)
+        #Decrypt each entry in the original vector:
+        for i in range(0, n):
+            vec_temp = dec_vec[i].decrypt()
+            dec_vec.append(vec_temp[0])        
+        #Return the decrypted vector:       
+        return(dec_vec)
+
+    #TODO: DOCSTRING:
+    def Decrypt(self, mat: np.array([])) -> np.array([]):
+        '''
+        SUMMARY:
+        PARAMETERS: 
+        RETURNS:
+        '''
+        #Instantiate a temporary list:
+        dec_mat = []
+        #Determine the number of entries in the input matrix:
+        n = len(mat)
+        #Decrypt each vector in the matrix:
+        for i in range(0, n):
+            dec_pic = dec_mat(mat[i])
+            dec_mat.append(dec_pic)
+        #Lastly, return the decrypted matrix:
+        return(dec_mat)
 
     def _n_components_comparison(self, Lambdas: np.array([])) -> int: 
         '''
@@ -334,15 +429,16 @@ class EigenfacesClient:
             if eigen_value_cumsum > v:
                 return i
 
+    #TODO: REMOVE KNN BY REMOVING COMMENTS
     def _distance_comparison(self, D: np.array([])) -> int:
         '''
         SUMMARY: Finds the minimum distance in a list of distances.
         PARAMETERS: Takes a numpy list of distances as input.
         RETURNS: The minimum index in the list.
         '''
-        D = np.array(D)
-        return D.argsort()[:5]
-        #return np.argmin(D)
+        D = np.array(D) #KNN
+        return D.argsort()[:5] #KNN
+        #return np.argmin(D) #NN
 
     def _goldschmidt_initializer(self, x: np.array([])) -> np.array([]):
         '''
