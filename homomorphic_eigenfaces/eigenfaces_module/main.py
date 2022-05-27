@@ -1,11 +1,13 @@
 from multiprocessing.spawn import import_main_path
-from PIL import Image #Used in preprocesser
+from PIL import Image
+from matplotlib.style import context
+import tenseal #Used in preprocesser
 from homo_eigenfaces_module import EigenfacesClient, EigenfacesServer
 import numpy as np
 import os
 from tests import TestSuite
 
-TRAINING_IMAGES_PATH = "training_images"
+TRAINING_IMAGES_PATH = "Heinrich"
 TEST_IMAGE_PATH = "test_images"
 
 def load_images(image_root: str) -> np.array([]):
@@ -36,7 +38,7 @@ if __name__ == '__main__':
     # Create a homomorphic Eigenfaces client:
     Client = EigenfacesClient()
     Server = EigenfacesServer(Client._n_components_comparison, Client._distance_comparison, 
-    Client._goldschmidt_initializer, Client._reencrypt_mat)
+    Client._goldschmidt_initializer, Client._reencrypt_mat,Client._reencrypt_vec,Client._decrypt_vec)
 
     # Load training images and test image from paths: 
     training_images, training_image_labels = load_images(TRAINING_IMAGES_PATH)
@@ -49,13 +51,14 @@ if __name__ == '__main__':
     
     # Preprocess the images, using the client:
     normalized_test_images = Client.Image_preprocesser(test_images)
-
     # Encrypt images: 
-    print(normalized_training_images[0])
-    encrypted_normalized_training_images = Client.Encrypt(normalized_training_images)
+    encrypted_normalized_training_images = np.empty(shape=0)
+    for i in range(0,len(normalized_training_images)):
+        encrypted_normalized_training_images = np.append(encrypted_normalized_training_images,Client.Encrypt(normalized_training_images[i]))
     encrypted_vectorized_training_images = Client.Encrypt(vectorized_training_images)
+    #print("vec = ",Client.Decrypt(encrypted_vectorized_training_images))
     #encrypted_normalized_test_images = Client.Encrypt(normalized_test_images)
-
+    
     #Testing the module: 
     tests = TestSuite(Server)
     tests.computation_time_training(encrypted_normalized_training_images, encrypted_vectorized_training_images)

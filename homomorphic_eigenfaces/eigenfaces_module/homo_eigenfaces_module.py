@@ -18,12 +18,14 @@ class EigenfacesServer:
 
     #TODO: DOCSTRING:
     def __init__(self, no_components_function, minimum_distance_function, 
-    goldschmidt_initializer_function, reencrypt_function) -> None:
+    goldschmidt_initializer_function, reencrypt_function, reencrypt_vec_function, decrypt_vec_function) -> None:
         self.is_trained = False
         self.determine_components = no_components_function
         self.distance_comparison = minimum_distance_function
         self.goldschmidt_initializer = goldschmidt_initializer_function
         self.reencrypt = reencrypt_function
+        self.reencrypt_vec = reencrypt_vec_function
+        self.sletsenere = decrypt_vec_function
 
     def Train(self, normalized_training_images: np.array([]), vectorized_training_images: np.array([])) -> None:
         '''
@@ -108,10 +110,14 @@ class EigenfacesServer:
         #Use Goldschmidt's algorithm for approximating the fraction:
         for _ in range(no_iterations):
             a = r*a
-            b = r*b
-            r = 2 + -1 * b
+            #b = r*b
+            #r = 2 + -1 * b
         #Reencrypt a using the client-side reencrypt method:
-        a = self.reencrypt(a)
+        if type(a) is ts.tensors.ckksvector.CKKSVector:
+            #a = a.decrypt()
+            #a = ts.ckks_vector(self.context,a)
+            a = self.reencrypt_vec([a])
+            a = a[0]
         #Return a: 
         return a
     
@@ -133,12 +139,23 @@ class EigenfacesServer:
         '''
         # Determine the shape of the input:
         [n, d] = np.shape(X)
+        #print("reenc")
+        #self.reencrypt(X)
         # Step 1: Subtract the mean face from all the training images:
         X += -1 * self.mean_face
+        #self.reencrypt(X)
+        #print("reenc")
+        #print(X.T)
         # Step 2: Calculate the set of principal components:
         if(n > d):
             # Calculate the covariance matrix of X:
             C = self._matrix_mult(X.T, X)
+            print(self.sletsenere(C[0]))
+            print(self.sletsenere(C[1]))
+            print(self.sletsenere(C[2]))
+            print(self.sletsenere(C[3]))
+            #self.reencrypt(C)
+            #print("reenc")
             # Calculate the eigenvalues (Lambda) and eigenvectors (W) from the covariance matrix (C):
             Lambdas, W = self.pow_eig_comb(C)
         else:
@@ -154,11 +171,15 @@ class EigenfacesServer:
         # Step 3: Determine the number of k components that satisfy the threshold criteria and return these:
         # Determine the number of components using the client-side function given as input: 
         k = self.determine_components(Lambdas)
+        print(self.sletsenere(Lambdas))
         # Select the k greatest eigenvalues: 
         Lambdas = Lambdas[0: k].copy()
         # And, the associated eigenvectors:
-        W = W[:, 0: k].copy()
+        eig_vec = []
+        for i in range(0,k):
+            eig_vec.append(W[i])
         # Return these:
+        W = eig_vec
         return np.array(W)
 
     #TODO: DOCSTRING AND COMMENTS:
@@ -191,15 +212,15 @@ class EigenfacesServer:
         # Determine the number of entries in the covariance matrix:
         n = len(C)
         # Initialize storage for the eigenvalues:
-        lambdas = np.zeros(n)
+        lambdas = []
         # And, the eigenvectors:
-        W = np.zeros((n, n))
+        W = []
         # Initialize the dividend:
         dividend = 1
         # Calculate the eigenvectors:
         for i in range (n):
             # Number of iterations for approximating the eigenvectors and eigenvalues:
-            no_iterations = 20
+            no_iterations = 10
             # Initialize the "old" eigenvector:
             w_old = 1
             # Initialize an initial vector:
@@ -210,7 +231,7 @@ class EigenfacesServer:
             # Calculate all the eigenvectors:
             for j in range(no_iterations):
                 # By obtaining the dot product of the covariance matrix and the first eigenvector:
-                x = np.dot(C, w)
+                x = self._mat_vec_mult(C, w)
                 # Calculate the new eigenvalue by taking the norm of the dot product:
                 __lambda = self._norm(x)
                 # Calculate the next eigenvector by dividing the dot product, previously calculated,
@@ -225,20 +246,60 @@ class EigenfacesServer:
             # We then multiply the dividend with the eigenvalue:
             __lambda = dividend * __lambda
             # And, multiply the dividend with the eigenvector:
-            w = dividend * w
-            w = self.reencrypt(w)
+            #dividend = self.reencrypt_vec([dividend])
+            #dividend = dividend[0]
+            w = self.vec_mult(w,dividend)
+            #w = dividend * w
+            w = self.reencrypt_vec(w)
             # And, store the current eigenvalue and vectors in separate matrices:
-            lambdas[i] = __lambda
-            W[i] = w.T
-            # And, adjust the covariance matrix while reencrypting: 
-            temp = -1 * __lambda 
-            temp = temp * w
-            temp = self.reencrypt(temp)
-            temp = temp * w.T
-            temp = self.reencrypt(temp)
+            lambdas.append(__lambda)
+            W.append(w.T)
+            # And, adjust the covariance matrix while reencrypting:
+            temp = [] 
+            temp = self.vec_mult(w,-1*__lambda) #might need append
+            temp = self.vec_cross(temp,w)
             C += temp
         # And, return both the eigenvalues and eigenvectors:
         return lambdas, W
+
+    def _mat_vec_mult(self,m: np.array([]),v: np.array([])) -> np.array([]):
+        r1 = len(m)         #mxn 
+        c2 = len(m[0])
+        temp_prod_1 = []
+        temp_prod_2 = []
+        for i in range(0,r1):
+            temp_prod_3 = []
+            for j in range(0,c2):
+                temp_prod_3.append(m[i][j]*v[j])
+            temp_prod_2.append(np.sum(temp_prod_3))
+        temp_prod_1.append(self.reencrypt_vec(temp_prod_2))
+        res = np.array(temp_prod_1[0])
+        return res
+
+    def vec_mult(self, v: np.array([]),e: float) -> np.array([]):
+        #takes a vector v and multiplies every entry in said vector with an element e
+        r = len(v)
+        temp_prod_1 = []
+        temp_prod_2 = []
+        for i in range(0,r):
+            temp_prod_2.append(v[i]*e)
+        temp_prod_1.append(self.reencrypt_vec(temp_prod_2))
+        res = np.array(temp_prod_1[0])
+        return res
+
+    def vec_cross(self, v1: np.array([]),v2: np.array([])) -> np.array([]):
+        # calculates the cross product of 2 vectors. This is used for shifting the covaraince matrix.
+        r = len(v1)
+        temp_prod_1 = []
+        temp_prod_2 = []
+        for i in range(0,r):
+            temp_prod_3 = []
+            for j in range(0,r): 
+                temp_prod_3.append(v1[i]*v2[j])
+            temp_prod_2.append(temp_prod_3)
+        temp_prod_1.append(self.reencrypt(temp_prod_2))
+        res = np.array(temp_prod_1[0])
+        return res
 
     def _norm(self, X: np.array([])) -> np.array([]):
         '''
@@ -247,6 +308,7 @@ class EigenfacesServer:
         RETURNS: Returns the the norm/length as, vector_norm.
         '''
         # Instantiate a temporary container:
+        #print(X)
         vector_norm = 0
         # Determine the number of elements in X:s
         n = len(X)
@@ -256,6 +318,7 @@ class EigenfacesServer:
         # Find the sqrt of the sum, calculated above:
         vector_norm = self._newton_sqrt(vector_norm)
         # Return the norm.
+        #print(vector_norm)
         return vector_norm
 
     def _newton_sqrt(self, x0: float) -> float: 
@@ -271,13 +334,13 @@ class EigenfacesServer:
         # Approximate the square root:
         for _ in range(no_iterations):
             x0 = 0.5 *(x0 + self._goldschmidt_division(a, x0))
-        # Return the approximate square root:
-        xn = x0
         # If a is an encrypted vector, reencrypt:
-        if type(a) is ts.tensors.ckksvector.CKKSVector:
-            xn = self.reencrypt(xn)
+            if type(a) is ts.tensors.ckksvector.CKKSVector:
+                x0 = self.reencrypt_vec([x0])
+                x0 = x0[0]
         # Return the vector:
-        return xn
+        # Return the approximate square root:
+        return x0
 
     def _euclidean_distance(self, p: np.array([]), q: np.array([])) -> np.array([]):
         '''
@@ -317,7 +380,6 @@ class EigenfacesClient:
     ATTRIBUTES: 
     METHODS:
     '''
-    context = ts.context
 
     #TODO: MAKE DOCSTRING:
     def __init__(self) -> None:
@@ -465,10 +527,10 @@ class EigenfacesClient:
         dec_vec = []
         vec_temp = []
         #Determine the length of the input vector:
-        n = len(dec_vec)
+        n = len(vec)
         #Decrypt each entry in the original vector:
         for i in range(0, n):
-            vec_temp = dec_vec[i].decrypt()
+            vec_temp = vec[i].decrypt()
             dec_vec.append(vec_temp[0])    
         #Concert list to numpy array: 
         dec_vec = np.array(dec_vec)
@@ -486,7 +548,7 @@ class EigenfacesClient:
         v = 0.99
 
         # Decrypt the eigenvalues: 
-        Lambdas = self.Decrypt(Lambdas)
+        Lambdas = self._decrypt_vec(Lambdas)
 
         # Calculate number of Eigenvalues to be used, to preserve v variance:
         for i, eigen_value_cumsum in enumerate(np.cumsum(Lambdas) / np.sum(Lambdas)):
@@ -511,9 +573,9 @@ class EigenfacesClient:
         RETURNS: The fraction 1/x.
         '''
         if type(x) is ts.tensors.ckksvector.CKKSVector:
-            x = self.decrypt(x)
+            x = x.decrypt()
             x = 1 / x[0]
-            x = self._encrypt_vec(x)
+            x = ts.CKKSVector(self.context,[x])
             return x
         else:
             return 1 / x
