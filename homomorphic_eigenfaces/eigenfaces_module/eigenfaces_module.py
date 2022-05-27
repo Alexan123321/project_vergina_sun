@@ -22,7 +22,7 @@ class EigenfacesServer:
         self.distance_comparison = minimum_distance_function
         self.goldschmidt_initializer = goldschmidt_initializer_function
 
-    def Train(self, vectorized_training_images: np.array([])) -> None:
+    def Train(self, normalized_training_images: np.array([]), vectorized_training_images: np.array([])) -> None:
         '''
         SUMMARY: This method follows the Eigenfaces algorithm, thus it 1) normalizes the
         training images, 2) calculates the mean face and 3) calculates the eigenfaces.
@@ -37,12 +37,12 @@ class EigenfacesServer:
         self.eigenfaces = self._pca(vectorized_training_images)        
 
         # Step 4: Calculate the projections of the training images:
-        self.projected_training_images = self._project(vectorized_training_images, self.eigenfaces, self.mean_face)
+        self.projected_training_images = self._project(normalized_training_images, self.eigenfaces, self.mean_face)
         # Update the training attribute:
         self.is_trained = True
 
     #TODO: REMOVE KNN BY REMOVING COMMENTS
-    def Classify(self, vectorized_test_images: np.array([]), training_labels: np.array([])) -> np.array([]):
+    def Classify(self, normalized_test_images: np.array([]), training_labels: np.array([])) -> np.array([]):
         '''
         SUMMARY: This method classifies an image by minimizing Euclidean distance.
         PARAMETERS: Two numpy lists, one including the image to be classified and one
@@ -52,7 +52,7 @@ class EigenfacesServer:
         # Make a list to store all classified labels: 
         test_labels = []
         # Project the image to be classified into the PCA-space:
-        q = self._project(vectorized_test_images, self.eigenfaces, self.mean_face)
+        q = self._project(normalized_test_images, self.eigenfaces, self.mean_face)
         # Determine the number of test image projections: 
         n = len(q)
         # Determine the number of training image projections:
@@ -65,12 +65,9 @@ class EigenfacesServer:
             for j in range(m):
                 distances.append(self._euclidean_distance(self.projected_training_images[j], q[i]))
             # We then use the client-based function that determines the index of the minimum distance:
-            #classification_index = self.distance_comparison(distances) #NN
-            classification_indexes = self.distance_comparison(distances) #KNN
-            counts = np.bincount(classification_indexes) #KNN
+            classification_index = self.distance_comparison(distances) #NN
             # And, return the label that corresponds to this minimum distance:
-            #test_labels.append(training_albels[classification_index]) #NN
-            test_labels.append(training_labels[np.argmax(counts)]) #KNN
+            test_labels.append(training_labels[classification_index]) #NN
         return test_labels
 
     def _vector_mean(self, X: np.array([])) -> np.array([]):
@@ -175,6 +172,7 @@ class EigenfacesServer:
             w_old = 1
             # Initialize an initial vector:
             x = np.ones((n, 1))
+            #x = np.random.rand(n, 1)
             # Calculate the first eigenvector:
             w = self._goldschmidt_division(x, self._norm(x))
             # Calculate all the eigenvectors:
@@ -265,7 +263,7 @@ class EigenfacesServer:
         # Calculate and the return the projection:
         p = []
         for xi in X:
-            temp = np.dot(xi - mu, W)
+            temp = np.dot(xi.reshape(1 , -1) - mu, W)
             p.append(temp)
         return p
 
@@ -277,7 +275,7 @@ class EigenfacesClient:
     ATTRIBUTES: 
     METHODS:
     '''
-    context = ts.context()
+    context = ts.context
 
     def __init__(self) -> None:
         self.context = ts.context(
@@ -300,10 +298,10 @@ class EigenfacesClient:
         #Temporary container to store processed images:
         normalized_images = []
         # Default image size declaration:
-        image_default_size = [256, 256] 
+        image_default_size = [23, 28] 
         # Processing loop:
         for image in images: 
-            #Convert current image to greyscale:
+            #Convert current image to greyscale
             image = image.convert("L")
             #Resize to default size using antialiasing:
             image = image.resize(image_default_size, Image.ANTIALIAS)
@@ -333,10 +331,6 @@ class EigenfacesClient:
             processed_images = np.vstack((processed_images, np.asarray(row).reshape(1 , -1)))# 1 x r*c 
         #Return processed images:
         return processed_images
-
-    #TODO: IMPLEMENT:
-    def Decrypt(self, images: np.array([])) -> np.array([]):
-        pass
 
     #TODO: DOCSTRING:
     def _encrypt_vec(self, vec: np.array([])) -> np.array([]):
@@ -422,7 +416,7 @@ class EigenfacesClient:
         RETURNS: And, returns an integer, stating how many eigenvalues to be used.
         '''
         # Variance threshold:
-        v = 0.95
+        v = 0.99
 
         # Calculate number of Eigenvalues to be used, to preserve v variance:
         for i, eigen_value_cumsum in enumerate(np.cumsum(Lambdas) / np.sum(Lambdas)):
@@ -436,9 +430,7 @@ class EigenfacesClient:
         PARAMETERS: Takes a numpy list of distances as input.
         RETURNS: The minimum index in the list.
         '''
-        D = np.array(D) #KNN
-        return D.argsort()[:5] #KNN
-        #return np.argmin(D) #NN
+        return np.argmin(D) #NN
 
     def _goldschmidt_initializer(self, x: np.array([])) -> np.array([]):
         '''

@@ -10,10 +10,10 @@ class TestSuite():
         self.server = input_server
         self.labels = []
 
-    def computation_time_training(self, training_images: np.array([])):
+    def computation_time_training(self, normalized_training_images: np.array([]), vectorized_training_images: np.array([])):
         print("Testing training time...")
         start = time.time()
-        self.server.Train(training_images)
+        self.server.Train(normalized_training_images, vectorized_training_images)
         duration = (time.time() - start)
         print(f"Training time: {(duration)/60:0.0f} minutes and {(duration)%60:0.0f} seconds.")
 

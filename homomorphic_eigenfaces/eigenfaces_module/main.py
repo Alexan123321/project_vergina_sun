@@ -5,7 +5,7 @@ import numpy as np
 import os
 from tests import TestSuite
 
-TRAINING_IMAGES_PATH = "yale_faces_cropped"
+TRAINING_IMAGES_PATH = "training-att-jpg"
 TEST_IMAGE_PATH = "test_images"
 
 def load_images(image_root: str) -> np.array([]):
@@ -49,19 +49,19 @@ if __name__ == '__main__':
     # Preprocess the images, using the client:
     normalized_test_images = Client.Image_preprocesser(test_images)
     # Represent the training images as vectors, using the client:
-    vectorized_test_images = Client.Image_vector_representation(normalized_test_images)
+    #vectorized_test_images = Client.Image_vector_representation(normalized_test_images)
 
     #Train the model: 
     #Server.Train(vectorized_training_images)
 
     # Classify the test image:
-    #classification_label = Server.Classify(vectorized_test_image, training_image_labels)
+    #classification_label = Server.Classify(normalized_test_images, training_image_labels)
 
     #Print result:
-    #print(f"{test_image_label} bitch was identified as: {classification_label}.")
+    #print(f"{test_image_labels} bitch was identified as: {classification_label}.")
 
     #Testing the module: 
     tests = TestSuite(Server)
-    tests.computation_time_training(vectorized_training_images)
-    tests.computation_time_classification(vectorized_test_images, training_image_labels)
+    tests.computation_time_training(normalized_training_images, vectorized_training_images)
+    tests.computation_time_classification(normalized_test_images, training_image_labels)
     tests.prediction_accuracy(test_image_labels)
