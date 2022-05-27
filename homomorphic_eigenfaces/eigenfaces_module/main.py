@@ -1,11 +1,11 @@
 from multiprocessing.spawn import import_main_path
 from PIL import Image #Used in preprocesser
-from eigenfaces_module import EigenfacesClient, EigenfacesServer
+from homo_eigenfaces_module import EigenfacesClient, EigenfacesServer
 import numpy as np
 import os
 from tests import TestSuite
 
-TRAINING_IMAGES_PATH = "training-att-jpg"
+TRAINING_IMAGES_PATH = "training_images"
 TEST_IMAGE_PATH = "test_images"
 
 def load_images(image_root: str) -> np.array([]):
@@ -35,7 +35,8 @@ def load_images(image_root: str) -> np.array([]):
 if __name__ == '__main__':
     # Create a homomorphic Eigenfaces client:
     Client = EigenfacesClient()
-    Server = EigenfacesServer(Client._n_components_comparison, Client._distance_comparison, Client._goldschmidt_initializer)
+    Server = EigenfacesServer(Client._n_components_comparison, Client._distance_comparison, 
+    Client._goldschmidt_initializer, Client._reencrypt_mat)
 
     # Load training images and test image from paths: 
     training_images, training_image_labels = load_images(TRAINING_IMAGES_PATH)
@@ -48,20 +49,15 @@ if __name__ == '__main__':
     
     # Preprocess the images, using the client:
     normalized_test_images = Client.Image_preprocesser(test_images)
-    # Represent the training images as vectors, using the client:
-    #vectorized_test_images = Client.Image_vector_representation(normalized_test_images)
 
-    #Train the model: 
-    #Server.Train(vectorized_training_images)
-
-    # Classify the test image:
-    #classification_label = Server.Classify(normalized_test_images, training_image_labels)
-
-    #Print result:
-    #print(f"{test_image_labels} bitch was identified as: {classification_label}.")
+    # Encrypt images: 
+    print(normalized_training_images[0])
+    encrypted_normalized_training_images = Client.Encrypt(normalized_training_images)
+    encrypted_vectorized_training_images = Client.Encrypt(vectorized_training_images)
+    #encrypted_normalized_test_images = Client.Encrypt(normalized_test_images)
 
     #Testing the module: 
     tests = TestSuite(Server)
-    tests.computation_time_training(normalized_training_images, vectorized_training_images)
-    tests.computation_time_classification(normalized_test_images, training_image_labels)
-    tests.prediction_accuracy(test_image_labels)
+    tests.computation_time_training(encrypted_normalized_training_images, encrypted_vectorized_training_images)
+    #tests.computation_time_classification(normalized_test_images, training_image_labels)
+    #tests.prediction_accuracy(test_image_labels)
