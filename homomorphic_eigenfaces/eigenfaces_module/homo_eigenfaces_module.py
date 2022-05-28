@@ -220,7 +220,7 @@ class EigenfacesServer:
         # Calculate the eigenvectors:
         for i in range (n):
             # Number of iterations for approximating the eigenvectors and eigenvalues:
-            no_iterations = 10
+            no_iterations = 2 #20
             # Initialize the "old" eigenvector:
             w_old = 1
             # Initialize an initial vector:
@@ -366,9 +366,19 @@ class EigenfacesServer:
         OUTPUT: A projection, p.
         '''
         # Calculate and the return the projection:
+        mu = -1 * mu
         p = []
-        for xi in X:
-            temp = np.dot(xi.reshape(1 , -1) - mu, W)
+        #print("X_shape =",np.shape(X))
+        for mat in X:
+            temp = []
+            #print("mat_shape =",np.shape(mat))
+            for row in mat:
+                for element in row:
+                    temp.append(element)
+            #print("temp1 =",np.shape(temp))
+            #temp = [temp]
+            #print("temp2 =",np.shape(temp))
+            temp = self._mat_vec_mult(W, temp + mu)
             p.append(temp)
         return p
 
@@ -446,6 +456,7 @@ class EigenfacesClient:
         '''
         #Instantiate a temporary list:
         enc_mat = []
+        #print("mat =",np.shape(mat))
         #Determine the number of entries in the input matrix:
         n = len(mat)
         #Encrypt each vector in the matrix:
@@ -454,6 +465,7 @@ class EigenfacesClient:
             enc_mat.append(enc_pic)
         #Convert the list to a numpy array:
         enc_mat = np.array(enc_mat)
+        #print("enc_mat =",np.shape(enc_mat))
         #Lastly, return the encrypted matrix:
         return enc_mat
 
@@ -470,11 +482,13 @@ class EigenfacesClient:
         #Determine the length of the input vector:
         n = len(vec)
         #Then encrypt every entry in the original vector:
+        #print("vec =",np.shape(vec))
         for i in range(0, n):
             vec_temp = [vec[i]]
             enc_vec.append(ts.ckks_vector(self.context, vec_temp))
         #Convert the list to a numpy array:
         enc_vec = np.array(enc_vec)
+        #print("enc_vec =",np.shape(enc_vec))
         #And, return it:
         return(enc_vec)
 
@@ -562,7 +576,7 @@ class EigenfacesClient:
         RETURNS: The minimum index in the list.
         '''
         # Decrypt the distance vector:
-        D = self.Decrypt(D)
+        D = self._decrypt_vec(D)
         return np.argmin(D) #NN
 
     #TODO: CORRECT DOCSTRING AND MAKE COMMENTS:

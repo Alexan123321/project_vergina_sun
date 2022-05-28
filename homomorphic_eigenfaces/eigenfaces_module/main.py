@@ -8,7 +8,7 @@ import os
 from tests import TestSuite
 
 TRAINING_IMAGES_PATH = "Heinrich"
-TEST_IMAGE_PATH = "test_images"
+TEST_IMAGE_PATH = "test_Heinrich"
 
 def load_images(image_root: str) -> np.array([]):
     images = [] #List for images
@@ -52,15 +52,17 @@ if __name__ == '__main__':
     # Preprocess the images, using the client:
     normalized_test_images = Client.Image_preprocesser(test_images)
     # Encrypt images: 
-    encrypted_normalized_training_images = np.empty(shape=0)
-    for i in range(0,len(normalized_training_images)):
-        encrypted_normalized_training_images = np.append(encrypted_normalized_training_images,Client.Encrypt(normalized_training_images[i]))
+    encrypted_normalized_training_images = []
+    encrypted_normalized_test_images = []
+    for i in normalized_training_images:
+        encrypted_normalized_training_images.append(Client.Encrypt(i))
+    for i in normalized_test_images:
+        encrypted_normalized_test_images.append(Client.Encrypt(i))
+
     encrypted_vectorized_training_images = Client.Encrypt(vectorized_training_images)
-    #print("vec = ",Client.Decrypt(encrypted_vectorized_training_images))
-    #encrypted_normalized_test_images = Client.Encrypt(normalized_test_images)
-    
+
     #Testing the module: 
     tests = TestSuite(Server)
     tests.computation_time_training(encrypted_normalized_training_images, encrypted_vectorized_training_images)
-    #tests.computation_time_classification(normalized_test_images, training_image_labels)
-    #tests.prediction_accuracy(test_image_labels)
+    tests.computation_time_classification(encrypted_normalized_test_images, training_image_labels)
+    tests.prediction_accuracy(test_image_labels)
